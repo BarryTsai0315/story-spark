@@ -75,6 +75,23 @@ export const translations: Translations = {
         actions: "Actions",
         regenerate: "Regenerate",
         changeImage: "Change Image",
+        editImage: "Edit Image",
+
+        // ImageEditor
+        imageEditor: "Image Editor",
+        backToOverview: "Back to Overview",
+        addPrompt: "Add Prompt",
+        promptPlaceholder: "Describe your edits, e.g., 'remove the background' or 'make the sky starry'. The red mask indicates the area to keep.",
+        maskTools: "Mask Tools",
+        brushSize: "Brush Size",
+        draw: "Draw",
+        erase: "Erase",
+        clearMask: "Clear Mask",
+        generatingEdits: "Generating Edits...",
+        editResults: "Edit Results",
+        selectOne: "Select one to proceed",
+        useAndContinue: "Use & Continue Editing",
+        useAndFinish: "Use & Finish",
 
         // Header Links
         hotVideoFinder: "Hot Video Finder",
@@ -143,6 +160,23 @@ export const translations: Translations = {
         actions: "操作",
         regenerate: "重新產生",
         changeImage: "更換圖片",
+        editImage: "編輯圖片",
+
+        // ImageEditor
+        imageEditor: "圖片編輯器",
+        backToOverview: "返回總覽",
+        addPrompt: "新增提示詞",
+        promptPlaceholder: "請用文字描述您想做的修改，例如「移除背景」、「將天空變成星空」。紅色遮罩是用來指定要保留的區域。",
+        maskTools: "遮罩工具",
+        brushSize: "筆刷大小",
+        draw: "繪製",
+        erase: "擦除",
+        clearMask: "清除遮罩",
+        generatingEdits: "正在產生修圖...",
+        editResults: "修圖結果",
+        selectOne: "請選擇一張圖片",
+        useAndContinue: "使用並繼續編輯",
+        useAndFinish: "使用並完成",
 
         // Header Links
         hotVideoFinder: "熱門影片搜尋器",

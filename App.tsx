@@ -3,36 +3,43 @@ import { GoogleGenAI } from "@google/genai";
 import { StoryIdeaGenerator, StoryConfig } from './components/StoryIdeaGenerator';
 import { StoryGenerator } from './components/StoryGenerator';
 import { PromptOverview, SceneOverview } from './components/PromptOverview';
+import { ImageEditor } from './components/ImageEditor';
 import { Language, StoryScene, GeneratedPrompt } from './types';
 import { translations } from './translations';
 
 type AppStep = 'idea' | 'generator' | 'overview';
 
+const initialStoryConfig: StoryConfig = {
+  idea: '',
+  storyStyle: 'Fantasy',
+  imageStyle: 'Default',
+  videoType: 'loop',
+  videoLength: '10s',
+  hasReferenceImage: false,
+  referenceImage: null,
+};
+
 const App: React.FC = () => {
   const [appStep, setAppStep] = useState<AppStep>('idea');
-  const [storyConfig, setStoryConfig] = useState<StoryConfig | null>(null);
+  const [storyConfig, setStoryConfig] = useState<StoryConfig>(initialStoryConfig);
   const [generatedScenes, setGeneratedScenes] = useState<StoryScene[] | null>(null);
   const [overviewData, setOverviewData] = useState<SceneOverview[] | null>(null);
   const [language, setLanguage] = useState<Language>('zh');
+  const [isEditingImage, setIsEditingImage] = useState(false);
   
   const getAi = useCallback(() => {
     if (!process.env.API_KEY) {
         alert("API_KEY environment variable is not set.");
         return null;
     }
-    // This creates a new instance on every call, which is fine for this simple app.
-    // In a larger app, you might memoize this.
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }, []);
 
-  // Callback from StoryIdeaGenerator
-  const handleIdeaSubmit = (config: StoryConfig, scenes: StoryScene[]) => {
-    setStoryConfig(config);
+  const handleIdeaSubmit = (scenes: StoryScene[]) => {
     setGeneratedScenes(scenes);
     setAppStep('generator');
   };
 
-  // Callback from StoryGenerator
   const handleFinishSelection = (prompts: GeneratedPrompt[]) => {
     const sceneData: SceneOverview[] = [];
     for (let i = 0; i < prompts.length; i += 2) {
@@ -50,29 +57,52 @@ const App: React.FC = () => {
   };
   
   const handleNewStory = () => {
-    setStoryConfig(null);
+    setStoryConfig(initialStoryConfig);
     setOverviewData(null);
     setGeneratedScenes(null);
     setAppStep('idea');
   }
   
   const handleReferenceImageChange = (newImage: string) => {
-    setStoryConfig(prev => {
-        if (!prev) return null;
-        return { ...prev, referenceImage: newImage, hasReferenceImage: true };
-    });
+    setStoryConfig(prev => ({ ...prev, referenceImage: newImage, hasReferenceImage: true }));
   };
+  
+  const handleEditImageFinish = (newImage: string | null) => {
+      if (newImage) {
+          handleReferenceImageChange(newImage);
+      }
+      setIsEditingImage(false);
+  }
 
   const toggleLanguage = () => {
       setLanguage(prev => prev === 'en' ? 'zh' : 'en');
   }
 
+  const storyIdeaGeneratorProps = {
+    config: storyConfig,
+    onConfigChange: setStoryConfig,
+    onNext: handleIdeaSubmit,
+    language,
+    toggleLanguage,
+    getAi,
+    onEditImageStart: () => setIsEditingImage(true),
+  };
+
   const renderContent = () => {
+    if (isEditingImage && storyConfig.referenceImage) {
+        return <ImageEditor 
+            initialImage={storyConfig.referenceImage}
+            onFinish={handleEditImageFinish}
+            getAi={getAi}
+            language={language}
+        />
+    }
+
     switch (appStep) {
       case 'idea':
-        return <StoryIdeaGenerator onNext={handleIdeaSubmit} language={language} toggleLanguage={toggleLanguage} getAi={getAi} />;
+        return <StoryIdeaGenerator {...storyIdeaGeneratorProps} />;
       case 'generator':
-        if (storyConfig && generatedScenes) {
+        if (generatedScenes) {
           return <StoryGenerator 
                     storyConfig={storyConfig}
                     initialScenes={generatedScenes}
@@ -81,10 +111,9 @@ const App: React.FC = () => {
                     language={language}
                   />;
         }
-        // Fallback in case storyConfig is null
-        return <StoryIdeaGenerator onNext={handleIdeaSubmit} language={language} toggleLanguage={toggleLanguage} getAi={getAi} />;
+        return <StoryIdeaGenerator {...storyIdeaGeneratorProps} />;
       case 'overview':
-        if (overviewData && storyConfig) {
+        if (overviewData) {
             return <PromptOverview
                 scenes={overviewData}
                 storyConfig={storyConfig}
@@ -92,10 +121,10 @@ const App: React.FC = () => {
                 getAi={getAi}
                 language={language}
                 onReferenceImageChange={handleReferenceImageChange}
+                onEditImageStart={() => setIsEditingImage(true)}
             />
         }
-         // Fallback
-        return <StoryIdeaGenerator onNext={handleIdeaSubmit} language={language} toggleLanguage={toggleLanguage} getAi={getAi} />;
+        return <StoryIdeaGenerator {...storyIdeaGeneratorProps} />;
       default:
         return null;
     }
@@ -107,7 +136,7 @@ const App: React.FC = () => {
             <div className="flex items-center justify-between h-16 max-w-7xl mx-auto">
                 <div className="flex items-center gap-4 flex-shrink-0">
                     <div className="w-8 h-8 text-[var(--primary)]">
-                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w.org/2000/svg">
                             <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
                         </svg>
                     </div>

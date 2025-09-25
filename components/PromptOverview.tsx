@@ -18,6 +18,7 @@ interface PromptOverviewProps {
   getAi: () => GoogleGenAI | null;
   language: Language;
   onReferenceImageChange: (newImage: string) => void;
+  onEditImageStart: () => void;
 }
 
 const LoadingSpinner: React.FC = () => (
@@ -29,7 +30,7 @@ const LoadingSpinner: React.FC = () => (
     </div>
 );
 
-export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyConfig, onNewStory, getAi, language, onReferenceImageChange }) => {
+export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyConfig, onNewStory, getAi, language, onReferenceImageChange, onEditImageStart }) => {
   const [generatedImages, setGeneratedImages] = useState<Record<number, string[]>>({});
   const [selectedImages, setSelectedImages] = useState<Record<number, string>>({});
   const [loadingScenes, setLoadingScenes] = useState<Record<number, boolean>>({});
@@ -75,7 +76,6 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
       if (!ai) return null;
   
       try {
-        // Since a reference image is now required, we always use the image editing flow with 'gemini-2.5-flash-image-preview'.
         if (!storyConfig.referenceImage) {
             console.error("Reference image is required but was not found.");
             return null;
@@ -84,6 +84,8 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
         const [header, data] = storyConfig.referenceImage.split(',');
         const inputImageData = data;
         const inputImageMimeType = header.match(/data:(.*);base64/)?.[1] || 'image/png';
+
+        const enhancedPrompt = `Strictly use the character and style from the provided reference image. Do not change the character's appearance. Place the character in the scene described by the following prompt: "${prompt}"`;
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image-preview',
@@ -96,7 +98,7 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                         },
                     },
                     {
-                        text: prompt,
+                        text: enhancedPrompt,
                     },
                 ],
             },
@@ -121,7 +123,6 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
 
   const handleGenerate = async (sceneNumber: number, prompt: string) => {
     setLoadingScenes(prev => ({ ...prev, [sceneNumber]: true }));
-    // Clear previous selection for this scene upon regeneration
     setSelectedImages(prev => {
         const newState = { ...prev };
         delete newState[sceneNumber];
@@ -129,7 +130,6 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
     });
 
     try {
-      // Call twice to get two options, as this model generates one at a time
       const image1 = await generateSingleImage(prompt);
       const image2 = await generateSingleImage(prompt);
 
@@ -166,7 +166,6 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
   const handleDownloadAll = () => {
     Object.entries(selectedImages).forEach(([sceneNumber, src]) => {
         const link = document.createElement('a');
-        // FIX: The error on line 169 indicates `src` is of type `unknown`. Assuming the line number was off by one and referred to this line, explicitly cast `src` to a string to resolve the type error.
         link.href = src as string;
         link.download = `StorySpark-Scene-${sceneNumber}.png`;
         document.body.appendChild(link);
@@ -197,13 +196,22 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                                 className="sr-only"
                                 accept="image/png, image/jpeg, image/gif"
                             />
-                            <button
-                                onClick={() => imageInputRef.current?.click()}
-                                className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
-                            >
-                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                               {t.changeImage}
-                            </button>
+                            <div className="mt-3 flex gap-2">
+                                <button
+                                    onClick={onEditImageStart}
+                                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors"
+                                >
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5.22c-1.25 0-2.5 1.06-4 1.06-1.5 0-2.75-1.06-4-1.06-3 0-6 8-6 12.22A4.91 4.91 0 0 0 7 19.78c1.25 0 2.5-1.06 4-1.06z"/><path d="M12 2.06c-1.5 0-2.75-1.06-4-1.06C5 1 2 9 2 13.22A4.91 4.91 0 0 0 7 18.78c1.25 0 2.5-1.06 4-1.06 1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 6.22c-1.25 0-2.5-1.06-4-1.06z"/></svg>
+                                   {t.editImage}
+                                </button>
+                                <button
+                                    onClick={() => imageInputRef.current?.click()}
+                                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                   {t.changeImage}
+                                </button>
+                            </div>
                         </div>
                          <div>
                             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">{t.promptOverview}</h3>
