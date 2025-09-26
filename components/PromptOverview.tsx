@@ -23,7 +23,7 @@ interface PromptOverviewProps {
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex justify-center items-center h-full w-full">
-        <svg className="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="http://www.w3.org/2000/svg">
+        <svg className="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
@@ -37,6 +37,14 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const t = translations[language];
+
+  // State for sequential generation
+  const [isSequentialGenerating, setIsSequentialGenerating] = useState(false);
+  const [currentSequentialScene, setCurrentSequentialScene] = useState<number | null>(null);
+  const [sequentialImages, setSequentialImages] = useState<string[]>([]);
+  const [tempSelectedImage, setTempSelectedImage] = useState<string | null>(null);
+  const [isSequentialSceneLoading, setIsSequentialSceneLoading] = useState(false);
+
 
   useEffect(() => {
     // When the reference image changes, clear all generated and selected images
@@ -71,50 +79,56 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
       reader.readAsDataURL(file);
   };
 
-  const generateSingleImage = async (prompt: string): Promise<string | null> => {
+  const generateImageForScene = async (prompt: string, referenceImage: string, previousImage?: string): Promise<string | null> => {
       const ai = getAi();
       if (!ai) return null;
   
       try {
-        if (!storyConfig.referenceImage) {
-            console.error("Reference image is required but was not found.");
-            return null;
-        }
+          const parts: any[] = [];
+          let enhancedPrompt = '';
 
-        const [header, data] = storyConfig.referenceImage.split(',');
-        const inputImageData = data;
-        const inputImageMimeType = header.match(/data:(.*);base64/)?.[1] || 'image/png';
+          const [refHeader, refData] = referenceImage.split(',');
+          parts.push({
+              inlineData: {
+                  data: refData,
+                  mimeType: refHeader.match(/data:(.*);base64/)?.[1] || 'image/png',
+              }
+          });
 
-        const enhancedPrompt = `Strictly use the character and style from the provided reference image. Do not change the character's appearance. Place the character in the scene described by the following prompt: "${prompt}"`;
+          if (previousImage) {
+              const [prevHeader, prevData] = previousImage.split(',');
+              parts.push({
+                  inlineData: {
+                      data: prevData,
+                      mimeType: prevHeader.match(/data:(.*);base64/)?.[1] || 'image/png',
+                  }
+              });
+              enhancedPrompt = `You are given two images. The first is the ORIGINAL reference image that defines the character and style. The second is the image from the PREVIOUS scene. 
+              Your task is to generate a new image. 
+              1. You MUST STRICTLY adhere to the character design, art style, color palette, and overall aesthetic from the FIRST (original) reference image.
+              2. Use the SECOND (previous scene) image for compositional and narrative continuity.
+              3. The new scene should be based on this prompt: "${prompt}"`;
+          } else {
+              enhancedPrompt = `Your task is to generate an image based on the text prompt. You MUST STRICTLY adhere to the character design, art style, color palette, and overall aesthetic of the provided reference image. DO NOT deviate from the reference image's style. The character's appearance MUST remain identical. The text prompt is: "${prompt}"`;
+          }
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image-preview',
-            contents: {
-                parts: [
-                    {
-                        inlineData: {
-                            data: inputImageData,
-                            mimeType: inputImageMimeType,
-                        },
-                    },
-                    {
-                        text: enhancedPrompt,
-                    },
-                ],
-            },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-            },
-        });
+          parts.push({ text: enhancedPrompt });
 
-        for (const part of response.candidates[0].content.parts) {
-            if (part.inlineData) {
-                const base64ImageBytes = part.inlineData.data as string;
-                return `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
-            }
-        }
-        return null;
-  
+          const response = await ai.models.generateContent({
+              model: 'gemini-2.5-flash-image-preview',
+              contents: { parts },
+              config: {
+                  responseModalities: [Modality.IMAGE, Modality.TEXT],
+              },
+          });
+
+          for (const part of response.candidates[0].content.parts) {
+              if (part.inlineData) {
+                  const base64ImageBytes = part.inlineData.data as string;
+                  return `data:${part.inlineData.mimeType};base64,${base64ImageBytes}`;
+              }
+          }
+          return null;
       } catch (err) {
           console.error("Error during image generation:", err);
           return null;
@@ -130,9 +144,8 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
     });
 
     try {
-      const image1 = await generateSingleImage(prompt);
-      const image2 = await generateSingleImage(prompt);
-
+      const image1 = await generateImageForScene(prompt, storyConfig.referenceImage!);
+      const image2 = await generateImageForScene(prompt, storyConfig.referenceImage!);
       const urls = [image1, image2].filter((url): url is string => url !== null);
       
       if (urls.length > 0) {
@@ -173,12 +186,162 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
         document.body.removeChild(link);
     });
   };
+  
+  const handleSequentialRegenerate = async () => {
+    if (currentSequentialScene === null || isSequentialSceneLoading) return;
+
+    setIsSequentialSceneLoading(true);
+    setTempSelectedImage(null);
+    setSequentialImages([]);
+
+    const currentIndex = scenes.findIndex(s => s.sceneNumber === currentSequentialScene);
+    const scene = scenes[currentIndex];
+    
+    let previousImage: string | undefined = undefined;
+    if (currentIndex > 0) {
+        const previousScene = scenes[currentIndex - 1];
+        previousImage = selectedImages[previousScene.sceneNumber];
+    }
+    
+    const [image1, image2] = await Promise.all([
+        generateImageForScene(scene.imagePrompt, storyConfig.referenceImage!, previousImage),
+        generateImageForScene(scene.imagePrompt, storyConfig.referenceImage!, previousImage)
+    ]);
+    
+    setSequentialImages([image1, image2].filter(Boolean) as string[]);
+    setIsSequentialSceneLoading(false);
+  }
+
+  const handleStartSequential = async () => {
+    if (!storyConfig.referenceImage) {
+      alert(t.errorNoReferenceImage);
+      return;
+    }
+    setGeneratedImages({});
+    setSelectedImages({});
+    setTempSelectedImage(null);
+    setIsSequentialGenerating(true);
+    setCurrentSequentialScene(scenes[0].sceneNumber);
+    setIsSequentialSceneLoading(true);
+
+    const scene = scenes[0];
+    const [image1, image2] = await Promise.all([
+        generateImageForScene(scene.imagePrompt, storyConfig.referenceImage),
+        generateImageForScene(scene.imagePrompt, storyConfig.referenceImage)
+    ]);
+    
+    setSequentialImages([image1, image2].filter(Boolean) as string[]);
+    setIsSequentialSceneLoading(false);
+  };
+
+  const handleConfirmAndNext = async () => {
+    if (!tempSelectedImage || currentSequentialScene === null) return;
+
+    const newSelectedImages = { ...selectedImages, [currentSequentialScene]: tempSelectedImage };
+    setSelectedImages(newSelectedImages);
+    setGeneratedImages(prev => ({ ...prev, [currentSequentialScene]: [tempSelectedImage] }));
+
+    const currentIndex = scenes.findIndex(s => s.sceneNumber === currentSequentialScene);
+    if (currentIndex === scenes.length - 1) {
+        setIsSequentialGenerating(false);
+        setCurrentSequentialScene(null);
+    } else {
+        const nextScene = scenes[currentIndex + 1];
+        setCurrentSequentialScene(nextScene.sceneNumber);
+        setTempSelectedImage(null);
+        setIsSequentialSceneLoading(true);
+
+        const [image1, image2] = await Promise.all([
+            generateImageForScene(nextScene.imagePrompt, storyConfig.referenceImage!, tempSelectedImage),
+            generateImageForScene(nextScene.imagePrompt, storyConfig.referenceImage!, tempSelectedImage)
+        ]);
+        
+        setSequentialImages([image1, image2].filter(Boolean) as string[]);
+        setIsSequentialSceneLoading(false);
+    }
+  };
+
+  const handleCancelSequential = () => {
+    setIsSequentialGenerating(false);
+    setCurrentSequentialScene(null);
+    setGeneratedImages({});
+    setSelectedImages({});
+  };
+
 
   const allImagesGenerated = scenes.every(s => generatedImages[s.sceneNumber]?.length > 0);
   const allImagesSelected = allImagesGenerated && Object.keys(selectedImages).length === scenes.length;
 
+  const SequentialGenerationModal = () => {
+    if (!isSequentialGenerating || currentSequentialScene === null) return null;
+
+    const scene = scenes.find(s => s.sceneNumber === currentSequentialScene)!;
+    const sceneIndex = scenes.findIndex(s => s.sceneNumber === currentSequentialScene);
+    const isLastScene = sceneIndex === scenes.length - 1;
+
+    return (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center backdrop-blur-md p-4" aria-modal="true" role="dialog">
+            <div className="bg-[var(--background)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+                {/* Header */}
+                <div className="flex-shrink-0 p-6 pb-4 border-b border-[var(--border-color)]">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-2xl font-bold text-[var(--text-primary)]">{t.sequentialGenerateTitle}</h2>
+                            <p className="text-[var(--text-secondary)] font-semibold">{t.sceneProgress.replace('{current}', String(sceneIndex + 1)).replace('{total}', String(scenes.length))}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={handleSequentialRegenerate}
+                                disabled={isSequentialSceneLoading}
+                                className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                {t.regenerate}
+                            </button>
+                            <button onClick={handleCancelSequential} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main scrollable content area */}
+                <div className="flex-grow overflow-y-auto p-6">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg text-sm text-[var(--text-secondary)] mb-4 border border-[var(--border-color)]">
+                        <strong>Prompt:</strong> {scene.imagePrompt}
+                    </div>
+                    <div className="flex items-center justify-center min-h-[300px]">
+                        {isSequentialSceneLoading ? <LoadingSpinner /> : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                {sequentialImages.map((src, idx) => (
+                                    <div key={idx} className="relative w-full aspect-square cursor-pointer group" onClick={() => setTempSelectedImage(src)}>
+                                        <img src={src} alt={`Option ${idx+1}`} className="w-full h-full object-contain rounded-lg bg-slate-100 dark:bg-slate-800" />
+                                        <div className={`absolute inset-0 rounded-lg transition-all ${tempSelectedImage === src ? 'ring-4 ring-offset-2 ring-indigo-500' : 'ring-1 ring-transparent group-hover:ring-indigo-400'}`}></div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {sequentialImages.length === 0 && !isSequentialSceneLoading && <p className="text-center text-red-500 mt-4">Failed to generate images. Please try again.</p>}
+                </div>
+
+                {/* Footer */}
+                <div className="flex-shrink-0 p-6 pt-4 border-t border-[var(--border-color)]">
+                    <div className="flex justify-end items-center gap-4">
+                        {!tempSelectedImage && <p className="text-sm text-amber-600 dark:text-amber-400 font-medium animate-pulse">{t.selectAnImage}</p>}
+                        <button onClick={handleConfirmAndNext} disabled={!tempSelectedImage || isSequentialSceneLoading} className="inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed">
+                            {isLastScene ? t.confirmSelectionLast : t.confirmSelection}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
   return (
     <div className="w-full min-h-screen">
+        <SequentialGenerationModal />
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8">
                 {/* Left Sidebar */}
@@ -215,7 +378,7 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                         </div>
                          <div>
                             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">{t.promptOverview}</h3>
-                             <p className="text-sm text-slate-500 mt-1">{t.imageGenerationModel}: <span className="font-mono bg-slate-100 dark:bg-slate-800 dark:text-slate-300 p-1 rounded-md text-xs">Gemini 2.5 Flash Image (Nano Banana)</span></p>
+                             <p className="text-sm text-slate-500 mt-1">{t.imageGenerationModel}: <span className="font-mono bg-slate-100 dark:bg-slate-800 dark:text-slate-300 p-1 rounded-md text-xs">gemini-2.5-flash-image-preview</span></p>
                         </div>
                     </div>
                 </aside>
@@ -225,12 +388,20 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                     <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                          <h2 className="text-4xl font-bold text-[var(--text-primary)]">{t.promptOverview}</h2>
                         <div className="flex gap-3 flex-shrink-0">
+                            <button
+                                onClick={handleStartSequential}
+                                disabled={isGeneratingAll || isSequentialGenerating}
+                                className="inline-flex items-center gap-2 justify-center rounded-lg px-5 py-3 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L12 22"/><path d="M17 5L12 10 7 5"/><path d="M17 12L12 17 7 12"/><path d="M17 19L12 24 7 19"/></svg>
+                                {t.sequentialGenerate}
+                            </button>
                             <button 
                               onClick={handleGenerateAll} 
-                              disabled={isGeneratingAll || allImagesGenerated}
+                              disabled={isGeneratingAll || allImagesGenerated || isSequentialGenerating}
                               className="inline-flex items-center gap-2 justify-center rounded-lg px-5 py-3 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:bg-slate-400 disabled:cursor-not-allowed"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3c.3 0 .5.1.8.3l6.4 3.7c.3.2.5.5.5.8v7.4c0 .3-.2.6-.5.8l-6.4 3.7c-.3.2-.5.3-.8.3s-.5-.1-.8-.3L4.8 16c-.3-.2-.5-.5-.5-.8V8.6c0-.3.2-.6.5-.8L11.2 3.3c.3-.2.5-.3.8-.3zM12 5.1L6.4 8.2 12 11.3l5.6-3.1L12 5.1zM4 9.4v6l7 4.1v-8.2L4 9.4zM19 15.4v-6L13 13.5v8.2l6-4.1z"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 1.9a3 3 0 0 0 0 4.2L12 11l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m16.5 7.5-1.9 1.9a3 3 0 0 0 0 4.2L16.5 15l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m7.5 16.5-1.9 1.9a3 3 0 0 0 0 4.2L7.5 21l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m3 12 1.9 1.9a3 3 0 0 0 4.2 0L11 12l-1.9-1.9a3 3 0 0 0-4.2 0Z"/><path d="m21 12-1.9-1.9a3 3 0 0 0-4.2 0L13.1 12l1.9 1.9a3 3 0 0 0 4.2 0Z"/></svg>
                                 {isGeneratingAll ? t.generating : (allImagesGenerated ? t.allGenerated : t.generateAll)}
                             </button>
                             <button 
@@ -272,14 +443,16 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                                                     </div>
                                                 ))}
                                             </div>
-                                            <button 
-                                                onClick={() => handleGenerate(scene.sceneNumber, scene.imagePrompt)}
-                                                disabled={loadingScenes[scene.sceneNumber]}
-                                                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-                                                {t.regenerate}
-                                            </button>
+                                            {generatedImages[scene.sceneNumber].length > 1 && (
+                                                <button 
+                                                    onClick={() => handleGenerate(scene.sceneNumber, scene.imagePrompt)}
+                                                    disabled={loadingScenes[scene.sceneNumber]}
+                                                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                                                    {t.regenerate}
+                                                </button>
+                                            )}
                                         </div>
                                      ) : (
                                         <div className="text-center">

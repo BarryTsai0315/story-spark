@@ -76,6 +76,13 @@ export const translations: Translations = {
         regenerate: "Regenerate",
         changeImage: "Change Image",
         editImage: "Edit Image",
+        sequentialGenerate: "Sequential Generate",
+        sequentialGenerateTitle: "Sequential Scene Generation",
+        confirmSelection: "Confirm & Next",
+        confirmSelectionLast: "Confirm & Finish",
+        cancel: "Cancel",
+        selectAnImage: "Please select an image to continue",
+        sceneProgress: "Scene {current} of {total}",
 
         // ImageEditor
         imageEditor: "Image Editor",
@@ -161,6 +168,13 @@ export const translations: Translations = {
         regenerate: "重新產生",
         changeImage: "更換圖片",
         editImage: "編輯圖片",
+        sequentialGenerate: "依序生成",
+        sequentialGenerateTitle: "依序生成場景",
+        confirmSelection: "確定並下一步",
+        confirmSelectionLast: "確定並完成",
+        cancel: "取消",
+        selectAnImage: "請選擇一張圖片以繼續",
+        sceneProgress: "場景 {current} / {total}",
 
         // ImageEditor
         imageEditor: "圖片編輯器",
