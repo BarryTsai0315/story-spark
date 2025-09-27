@@ -86,6 +86,7 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
       try {
           const parts: any[] = [];
           let enhancedPrompt = '';
+          const imageStyleInstruction = storyConfig.imageStyle !== 'Default' ? `The final image must be in a '${storyConfig.imageStyle}' style.` : '';
 
           const [refHeader, refData] = referenceImage.split(',');
           parts.push({
@@ -103,13 +104,17 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                       mimeType: prevHeader.match(/data:(.*);base64/)?.[1] || 'image/png',
                   }
               });
-              enhancedPrompt = `You are given two images. The first is the ORIGINAL reference image that defines the character and style. The second is the image from the PREVIOUS scene. 
-              Your task is to generate a new image. 
-              1. You MUST STRICTLY adhere to the character design, art style, color palette, and overall aesthetic from the FIRST (original) reference image.
-              2. Use the SECOND (previous scene) image for compositional and narrative continuity.
-              3. The new scene should be based on this prompt: "${prompt}"`;
+              enhancedPrompt = `You are an expert image generator. You are given two images. The first is the ORIGINAL reference image that defines the character and style. The second is the image from the PREVIOUS scene. 
+              Your task is to generate a new image for the next scene. 
+              1. ABSOLUTE CRITICAL RULE: You MUST STRICTLY adhere to the character design, art style, color palette, and overall aesthetic from the FIRST (original) reference image. The character's appearance, clothing, and key features MUST remain IDENTICAL to the reference. Any deviation will be considered a failure.
+              2. Use the SECOND (previous scene) image for compositional and narrative continuity, showing the character progressing the story.
+              3. The new scene is described by this prompt: "${prompt}".
+              ${imageStyleInstruction}`;
           } else {
-              enhancedPrompt = `Your task is to generate an image based on the text prompt. You MUST STRICTLY adhere to the character design, art style, color palette, and overall aesthetic of the provided reference image. DO NOT deviate from the reference image's style. The character's appearance MUST remain identical. The text prompt is: "${prompt}"`;
+              enhancedPrompt = `You are an expert image generator. Your task is to generate an image based on the text prompt. 
+              ABSOLUTE CRITICAL RULE: You MUST STRICTLY adhere to the character design, art style, color palette, and overall aesthetic of the provided reference image. DO NOT deviate from the reference image's style. The character's appearance, clothing, and key features MUST remain IDENTICAL. Any deviation will be considered a failure. 
+              The text prompt for the new scene is: "${prompt}". 
+              ${imageStyleInstruction}`;
           }
 
           parts.push({ text: enhancedPrompt });

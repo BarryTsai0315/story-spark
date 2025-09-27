@@ -26,7 +26,7 @@ interface StoryIdeaGeneratorProps {
 const imageStyleOptions = [
     'Default', '8-Bit', 'Botanical Art', 'Comic Book', 'Cubism', 'Cyberpunk',
     'Exploded View', 'Glitch Art', 'Isometric', 'Knolling', 'Low Poly', 'Mosaic',
-    'Oil Painting', 'Pixel Art', 'Playful 3D Art', 'Pop Art', 'Photorealism',
+    'Oil Painting', 'Pixel Art', 'Playful 3D Art', 'Pop Art', 'Realistic Photo', 'Photorealism',
     'Surrealism', 'Vaporwave', 'Vector Art', 'Watercolor',
 ];
 
@@ -197,7 +197,8 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
 
               詳細設定:
               - 故事核心點子: "${config.idea}"
-              - 整體風格: ${config.storyStyle}
+              - 故事風格: ${config.storyStyle}
+              - 圖片視覺風格: ${config.imageStyle === 'Default' ? '與參考圖一致' : config.imageStyle}
               - 影片長度: ${config.videoLength}
               ${config.referenceImage ? "- 需參考附上的圖片風格與主題。" : ""}
 
