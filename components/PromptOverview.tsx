@@ -7,6 +7,7 @@ import { translations } from '../translations';
 
 export interface SceneOverview {
   sceneNumber: number;
+  storyContent: string;
   imagePrompt: string;
   videoPrompt: string;
 }
@@ -381,6 +382,12 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                                 </button>
                             </div>
                         </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">{t.fullStory}</h3>
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg text-sm text-[var(--text-secondary)] border border-[var(--border-color)] max-h-60 overflow-y-auto">
+                                <p className="whitespace-pre-wrap">{storyConfig.idea}</p>
+                            </div>
+                        </div>
                          <div>
                             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">{t.promptOverview}</h3>
                              <p className="text-sm text-slate-500 mt-1">{t.imageGenerationModel}: <span className="font-mono bg-slate-100 dark:bg-slate-800 dark:text-slate-300 p-1 rounded-md text-xs">gemini-2.5-flash-image-preview</span></p>
@@ -423,17 +430,19 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                     <div className="bg-[var(--input-bg)] rounded-xl shadow-sm border border-[var(--border-color)] overflow-hidden">
                         <div className="grid grid-cols-12 gap-x-6 px-6 py-3 bg-slate-50 dark:bg-slate-900/50 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             <div className="col-span-1">{t.scene}</div>
-                            <div className="col-span-4">{t.imagePrompt}</div>
-                            <div className="col-span-4">{t.videoPrompt}</div>
-                            <div className="col-span-3 text-center">{t.actions}</div>
+                            <div className="col-span-3">{t.storyContent}</div>
+                            <div className="col-span-2">{t.imagePrompt}</div>
+                            <div className="col-span-2">{t.videoPrompt}</div>
+                            <div className="col-span-4 text-center">{t.generatedImage}</div>
                         </div>
                         <div className="divide-y divide-[var(--border-color)]">
                         {scenes.map(scene => (
                             <div key={scene.sceneNumber} className="grid grid-cols-12 gap-x-6 px-6 py-4 items-center">
                                 <div className="col-span-1 text-sm font-bold text-[var(--text-primary)]">{t.scene} {scene.sceneNumber}</div>
-                                <div className="col-span-4 text-sm text-[var(--text-secondary)] leading-relaxed">{scene.imagePrompt}</div>
-                                <div className="col-span-4 text-sm text-[var(--text-secondary)] leading-relaxed">{scene.videoPrompt}</div>
-                                <div className="col-span-3">
+                                <div className="col-span-3 text-xs text-[var(--text-secondary)] leading-relaxed">{scene.storyContent}</div>
+                                <div className="col-span-2 text-xs text-[var(--text-secondary)] leading-relaxed">{scene.imagePrompt}</div>
+                                <div className="col-span-2 text-xs text-[var(--text-secondary)] leading-relaxed">{scene.videoPrompt}</div>
+                                <div className="col-span-4">
                                     {loadingScenes[scene.sceneNumber] ? <LoadingSpinner /> : 
                                      generatedImages[scene.sceneNumber] ? (
                                         <div className="flex flex-col items-center gap-2">
@@ -444,7 +453,7 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                                                         className={`relative rounded-lg overflow-hidden cursor-pointer transition-all ${selectedImages[scene.sceneNumber] === src ? 'ring-4 ring-offset-1 ring-indigo-500' : 'ring-1 ring-gray-300 hover:ring-indigo-400'}`}
                                                         onClick={() => handleSelectImage(scene.sceneNumber, src)}
                                                     >
-                                                        <img src={src} alt={`Scene ${scene.sceneNumber} option ${idx + 1}`} className="w-28 h-28 object-cover" />
+                                                        <img src={src} alt={`Scene ${scene.sceneNumber} option ${idx + 1}`} className="w-20 h-20 object-cover" />
                                                     </div>
                                                 ))}
                                             </div>
@@ -463,9 +472,9 @@ export const PromptOverview: React.FC<PromptOverviewProps> = ({ scenes, storyCon
                                         <div className="text-center">
                                             <button 
                                                 onClick={() => handleGenerate(scene.sceneNumber, scene.imagePrompt)}
-                                                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors"
+                                                className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors"
                                             >
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 1.9a3 3 0 0 0 0 4.2L12 11l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m16.5 7.5-1.9 1.9a3 3 0 0 0 0 4.2L16.5 15l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m7.5 16.5-1.9 1.9a3 3 0 0 0 0 4.2L7.5 21l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m3 12 1.9 1.9a3 3 0 0 0 4.2 0L11 12l-1.9-1.9a3 3 0 0 0-4.2 0Z"/><path d="m21 12-1.9-1.9a3 3 0 0 0-4.2 0L13.1 12l1.9 1.9a3 3 0 0 0 4.2 0Z"/></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 1.9a3 3 0 0 0 0 4.2L12 11l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m16.5 7.5-1.9 1.9a3 3 0 0 0 0 4.2L16.5 15l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m7.5 16.5-1.9 1.9a3 3 0 0 0 0 4.2L7.5 21l1.9-1.9a3 3 0 0 0 0-4.2Z"/><path d="m3 12 1.9 1.9a3 3 0 0 0 4.2 0L11 12l-1.9-1.9a3 3 0 0 0-4.2 0Z"/><path d="m21 12-1.9-1.9a3 3 0 0 0-4.2 0L13.1 12l1.9 1.9a3 3 0 0 0 4.2 0Z"/></svg>
                                                 {t.generate}
                                             </button>
                                         </div>

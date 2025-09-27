@@ -48,7 +48,7 @@ export const translations: Translations = {
         scene: "Scene",
         storyContent: "Story Content",
         imagePrompt: "Image Prompt",
-        imageToVideoPrompt: "Image-to-Video Prompt",
+        videoPrompt: "Video Prompt",
         version: "Version",
         backToIdea: "Back to Idea",
         previous: "Previous",
@@ -66,12 +66,12 @@ export const translations: Translations = {
         // PromptOverview
         newStory: "New Story",
         promptOverview: "Prompt Overview",
+        fullStory: "Full Story",
         imageGenerationModel: "Image Editing Model",
         generateAll: "Generate All",
         generating: "Generating...",
         allGenerated: "All Generated",
         downloadAll: "Download All",
-        videoPrompt: "Video Prompt",
         actions: "Actions",
         regenerate: "Regenerate",
         changeImage: "Change Image",
@@ -83,6 +83,7 @@ export const translations: Translations = {
         cancel: "Cancel",
         selectAnImage: "Please select an image to continue",
         sceneProgress: "Scene {current} of {total}",
+        generatedImage: "Generated Image",
 
         // ImageEditor
         imageEditor: "Image Editor",
@@ -141,7 +142,7 @@ export const translations: Translations = {
         scene: "場景",
         storyContent: "故事內容",
         imagePrompt: "圖片 Prompt",
-        imageToVideoPrompt: "圖轉影 Prompt",
+        videoPrompt: "影片 Prompt",
         version: "版本",
         backToIdea: "返回點子頁",
         previous: "上一步",
@@ -158,12 +159,12 @@ export const translations: Translations = {
         // PromptOverview
         newStory: "新故事",
         promptOverview: "Prompt 總覽",
+        fullStory: "完整故事",
         imageGenerationModel: "圖片編輯模型",
         generateAll: "全部生成",
         generating: "生成中...",
         allGenerated: "已全部生成",
         downloadAll: "全部下載",
-        videoPrompt: "影片 Prompt",
         actions: "操作",
         regenerate: "重新產生",
         changeImage: "更換圖片",
@@ -175,6 +176,7 @@ export const translations: Translations = {
         cancel: "取消",
         selectAnImage: "請選擇一張圖片以繼續",
         sceneProgress: "場景 {current} / {total}",
+        generatedImage: "生成圖片",
 
         // ImageEditor
         imageEditor: "圖片編輯器",

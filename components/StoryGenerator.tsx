@@ -6,7 +6,7 @@ import { translations } from '../translations';
 interface StoryGeneratorProps {
     storyConfig: StoryConfig;
     initialScenes: StoryScene[];
-    onFinishSelection: (prompts: GeneratedPrompt[]) => void;
+    onFinishSelection: (imagePrompts: GeneratedPrompt[], videoPrompts: GeneratedPrompt[], storyContents: string[]) => void;
     onBack: () => void;
     language: Language;
 }
@@ -16,7 +16,7 @@ const PromptCard: React.FC<{ title: string; chinesePrompt: string; englishPrompt
     return (
         <div 
             onClick={onSelect} 
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200
+            className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 h-full
                 ${isSelected 
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
                     : 'border-[var(--border-color)] bg-[var(--input-bg)] hover:border-indigo-400 dark:hover:border-indigo-500'}`
@@ -62,12 +62,14 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ storyConfig, ini
     };
 
     const handleFinishSelectionClick = () => {
-        const finalPrompts: GeneratedPrompt[] = [];
-        storyScenes.forEach(scene => {
-            finalPrompts.push(scene.image_prompts[scene.selected_image_prompt_index]);
-            finalPrompts.push(scene.image_to_video_prompts[scene.selected_video_prompt_index]);
-        });
-        onFinishSelection(finalPrompts);
+        const finalImagePrompts: GeneratedPrompt[] = storyScenes.map(scene => 
+            scene.image_prompts[scene.selected_image_prompt_index]
+        );
+        const finalVideoPrompts: GeneratedPrompt[] = storyScenes.map(scene =>
+            scene.image_to_video_prompts[scene.selected_video_prompt_index]
+        );
+        const finalStoryContents: string[] = storyScenes.map(scene => scene.story_content);
+        onFinishSelection(finalImagePrompts, finalVideoPrompts, finalStoryContents);
     };
 
     const renderContent = () => {
@@ -97,52 +99,51 @@ export const StoryGenerator: React.FC<StoryGeneratorProps> = ({ storyConfig, ini
                     </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex-grow overflow-y-auto -mx-4 px-4 py-4 space-y-6">
-                    {/* Story Description */}
-                    <div className="bg-[var(--input-bg)] p-4 rounded-lg border border-[var(--border-color)]">
-                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">{t.storyContent}</h3>
-                        <p className="text-[var(--text-secondary)] leading-relaxed">{currentScene.story_content}</p>
-                    </div>
+                {/* Story Content */}
+                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-[var(--border-color)] flex-shrink-0">
+                    <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">{t.storyContent} - {t.scene} {currentScene.scene_number}</h2>
+                    <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{currentScene.story_content}</p>
+                </div>
 
+                {/* Content Area */}
+                <div className="flex-grow overflow-y-auto -mx-4 px-4 py-4">
                     {/* Prompt Selection */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Image Prompts */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">{t.imagePrompt}</h3>
-                            <PromptCard 
-                                title={`${t.version} A`}
-                                chinesePrompt={currentScene.image_prompts[0].chinese_prompt}
-                                englishPrompt={currentScene.image_prompts[0].english_prompt}
-                                isSelected={currentScene.selected_image_prompt_index === 0}
-                                onSelect={() => handleSelectionChange('image', 0)}
-                            />
-                            <PromptCard 
-                                title={`${t.version} B`}
-                                chinesePrompt={currentScene.image_prompts[1].chinese_prompt}
-                                englishPrompt={currentScene.image_prompts[1].english_prompt}
-                                isSelected={currentScene.selected_image_prompt_index === 1}
-                                onSelect={() => handleSelectionChange('image', 1)}
-                            />
-                        </div>
-                        {/* Image-to-Video Prompts */}
-                        <div className="space-y-4">
-                             <h3 className="text-lg font-bold text-[var(--text-primary)]">{t.imageToVideoPrompt}</h3>
-                            <PromptCard 
-                                title={`${t.version} A`}
-                                chinesePrompt={currentScene.image_to_video_prompts[0].chinese_prompt}
-                                englishPrompt={currentScene.image_to_video_prompts[0].english_prompt}
-                                isSelected={currentScene.selected_video_prompt_index === 0}
-                                onSelect={() => handleSelectionChange('video', 0)}
-                            />
-                            <PromptCard 
-                                title={`${t.version} B`}
-                                chinesePrompt={currentScene.image_to_video_prompts[1].chinese_prompt}
-                                englishPrompt={currentScene.image_to_video_prompts[1].english_prompt}
-                                isSelected={currentScene.selected_video_prompt_index === 1}
-                                onSelect={() => handleSelectionChange('video', 1)}
-                            />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        {/* Headers */}
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] text-center">{t.imagePrompt}</h3>
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] text-center">{t.videoPrompt}</h3>
+                        
+                        {/* Row 1: Version A */}
+                        <PromptCard 
+                            title={`${t.version} A`}
+                            chinesePrompt={currentScene.image_prompts[0].chinese_prompt}
+                            englishPrompt={currentScene.image_prompts[0].english_prompt}
+                            isSelected={currentScene.selected_image_prompt_index === 0}
+                            onSelect={() => handleSelectionChange('image', 0)}
+                        />
+                        <PromptCard 
+                            title={`${t.version} A`}
+                            chinesePrompt={currentScene.image_to_video_prompts[0].chinese_prompt}
+                            englishPrompt={currentScene.image_to_video_prompts[0].english_prompt}
+                            isSelected={currentScene.selected_video_prompt_index === 0}
+                            onSelect={() => handleSelectionChange('video', 0)}
+                        />
+
+                        {/* Row 2: Version B */}
+                        <PromptCard 
+                            title={`${t.version} B`}
+                            chinesePrompt={currentScene.image_prompts[1].chinese_prompt}
+                            englishPrompt={currentScene.image_prompts[1].english_prompt}
+                            isSelected={currentScene.selected_image_prompt_index === 1}
+                            onSelect={() => handleSelectionChange('image', 1)}
+                        />
+                        <PromptCard 
+                            title={`${t.version} B`}
+                            chinesePrompt={currentScene.image_to_video_prompts[1].chinese_prompt}
+                            englishPrompt={currentScene.image_to_video_prompts[1].english_prompt}
+                            isSelected={currentScene.selected_video_prompt_index === 1}
+                            onSelect={() => handleSelectionChange('video', 1)}
+                        />
                     </div>
                 </div>
 

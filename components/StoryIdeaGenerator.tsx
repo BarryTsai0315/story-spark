@@ -207,7 +207,7 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
               2. 對於每個場景，請提供以下內容：
                  - 該場景的故事內容 (繁體中文)。
                  - 兩種不同風格或角度的**圖像生成提示**版本（版本A和版本B）。
-                 - 兩種不同風格或角度的**圖轉影片生成提示**版本（版本A和版本B）。
+                 - 兩種不同風格或角度的**圖像轉影片生成提示**版本（版本A和版本B），這個提示詞是用來將上一步生成的圖片轉為影片。
                  - 每個提示版本都必須同時包含繁體中文和英文。英文提示詞需針對圖像生成AI（如Midjourney, DALL-E, Sora）進行優化，使用具體的藝術家、風格、鏡頭角度和燈光描述。
                  ${config.referenceImage ? referenceImageInstruction : ""}
 
@@ -215,7 +215,7 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
               - "scene_number": (數字) 場景編號。
               - "story_content": (字串) 該場景的繁體中文故事描述。
               - "image_prompts": (陣列) 包含兩個物件，代表兩種**圖像**提示版本。
-              - "image_to_video_prompts": (陣列) 包含兩個物件，代表兩種**圖轉影片**提示版本。
+              - "image_to_video_prompts": (陣列) 包含兩個物件，代表兩種**圖像轉影片**提示版本。
               - 每個提示版本物件都應有 "chinese_prompt" 和 "english_prompt" 兩個鍵。
           `;
           
@@ -235,7 +235,7 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
               config: {
                   responseMimeType: "application/json",
                   responseSchema: responseSchema,
-                  systemInstruction: "你是一位富有創意的作家和提示詞工程師。你的任務是將故事點子轉化為結構化的場景、故事內容和多樣化的雙語圖像提示。請嚴格遵守請求的 JSON 格式。",
+                  systemInstruction: "你是一位富有創意的作家和提示詞工程師。你的任務是將故事點子轉化為結構化的場景、故事內容和多樣化的雙語圖像與影片提示。請嚴格遵守請求的 JSON 格式。",
               }
           });
 
@@ -245,9 +245,11 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
           const parsedScenes = JSON.parse(response.text.trim()) as any[];
           const scenesWithState: StoryScene[] = parsedScenes.map((scene: any, index: number): StoryScene => {
               const imagePrompts = Array.isArray(scene.image_prompts) ? scene.image_prompts : [];
-              const videoPrompts = Array.isArray(scene.image_to_video_prompts) ? scene.image_to_video_prompts : [];
               const imagePromptVersions: [PromptVersion, PromptVersion] = [ imagePrompts[0] || { chinese_prompt: '錯誤: 缺少提示', english_prompt: 'Error: Missing prompt' }, imagePrompts[1] || { chinese_prompt: '錯誤: 缺少提示', english_prompt: 'Error: Missing prompt' } ];
+              
+              const videoPrompts = Array.isArray(scene.image_to_video_prompts) ? scene.image_to_video_prompts : [];
               const videoPromptVersions: [PromptVersion, PromptVersion] = [ videoPrompts[0] || { chinese_prompt: '錯誤: 缺少提示', english_prompt: 'Error: Missing prompt' }, videoPrompts[1] || { chinese_prompt: '錯誤: 缺少提示', english_prompt: 'Error: Missing prompt' } ];
+
               return { id: Date.now() + index, scene_number: scene.scene_number, story_content: scene.story_content, image_prompts: imagePromptVersions, image_to_video_prompts: videoPromptVersions, selected_image_prompt_index: 0, selected_video_prompt_index: 0 };
           });
           

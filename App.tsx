@@ -40,18 +40,13 @@ const App: React.FC = () => {
     setAppStep('generator');
   };
 
-  const handleFinishSelection = (prompts: GeneratedPrompt[]) => {
-    const sceneData: SceneOverview[] = [];
-    for (let i = 0; i < prompts.length; i += 2) {
-        const sceneIndex = i / 2;
-        if (prompts[i] && prompts[i+1]) {
-            sceneData.push({
-                sceneNumber: sceneIndex + 1,
-                imagePrompt: prompts[i].english_prompt,
-                videoPrompt: prompts[i+1].english_prompt,
-            });
-        }
-    }
+  const handleFinishSelection = (imagePrompts: GeneratedPrompt[], videoPrompts: GeneratedPrompt[], storyContents: string[]) => {
+    const sceneData: SceneOverview[] = imagePrompts.map((prompt, index) => ({
+        sceneNumber: index + 1,
+        storyContent: storyContents[index],
+        imagePrompt: prompt.english_prompt,
+        videoPrompt: videoPrompts[index].english_prompt,
+    }));
     setOverviewData(sceneData);
     setAppStep('overview');
   };
@@ -136,7 +131,7 @@ const App: React.FC = () => {
             <div className="flex items-center justify-between h-16 max-w-7xl mx-auto">
                 <div className="flex items-center gap-4 flex-shrink-0">
                     <div className="w-8 h-8 text-[var(--primary)]">
-                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w.org/2000/svg">
+                        <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
                             <path d="M44 4H30.6666V17.3334H17.3334V30.6666H4V44H44V4Z" fill="currentColor"></path>
                         </svg>
                     </div>
