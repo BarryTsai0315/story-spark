@@ -5,8 +5,10 @@ import { translations } from '../translations';
 
 export type StoryConfig = {
   idea: string;
-  storyStyle: 'Fantasy' | 'Sci-Fi' | 'Realism' | 'Cyberpunk' | 'Cute Style';
-  imageStyle: string; // Added new imageStyle property
+  storyStyle: 'Fantasy' | 'Sci-Fi' | 'Realism' | 'Cyberpunk' | 'Cute Style' | 'Heroic Rescue' | 'Unexpected Twist' | 'Time Travel';
+  imageStyle: string;
+  targetAge: 'All Ages' | 'Under 12' | '13-17' | '18-24' | '25-34' | '35-44' | '45-54' | '55-64' | 'Over 65';
+  targetGender: 'Male' | 'Female' | 'All Genders';
   videoType: 'loop' | 'story';
   videoLength: '10s' | '30s' | '60s';
   hasReferenceImage: boolean;
@@ -29,6 +31,11 @@ const imageStyleOptions = [
     'Oil Painting', 'Pixel Art', 'Playful 3D Art', 'Pop Art', 'Realistic Photo', 'Photorealism',
     'Surrealism', 'Vaporwave', 'Vector Art', 'Watercolor',
 ];
+
+const storyStyleOptions: StoryConfig['storyStyle'][] = ['Fantasy', 'Sci-Fi', 'Realism', 'Cyberpunk', 'Cute Style', 'Heroic Rescue', 'Unexpected Twist', 'Time Travel'];
+const ageOptions: StoryConfig['targetAge'][] = ['All Ages', 'Under 12', '13-17', '18-24', '25-34', '35-44', '45-54', '55-64', 'Over 65'];
+const genderOptions: StoryConfig['targetGender'][] = ['Male', 'Female', 'All Genders'];
+
 
 export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, onConfigChange, onNext, language, toggleLanguage, getAi, onEditImageStart }) => {
   const [error, setError] = useState<string | null>(null);
@@ -123,10 +130,12 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
         const prompt = hasIdea
             ? `You are a creative writer. Your task is to refine and enhance a story idea.
                Story Theme: ${config.storyStyle}
+               Target Audience: Age ${config.targetAge}, Gender ${config.targetGender}
                Original Idea: "${config.idea}"
                Rewrite the original idea in one paragraph to be more vivid, engaging, and imaginative, while staying true to the core concept and theme. Provide only the rewritten text, without any preamble or explanation.`
             : `You are a creative writer. Your task is to brainstorm a new story idea.
                Story Theme: ${config.storyStyle}
+               Target Audience: Age ${config.targetAge}, Gender ${config.targetGender}
                Generate a short, one-paragraph story idea that fits the given theme. The idea should be imaginative and provide a good starting point for a visual story. Provide only the story text, without any preamble or explanation.`;
 
         const response = await ai.models.generateContent({
@@ -199,6 +208,8 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
               - 故事核心點子: "${config.idea}"
               - 故事風格: ${config.storyStyle}
               - 圖片視覺風格: ${config.imageStyle === 'Default' ? '與參考圖一致' : config.imageStyle}
+              - 目標觀眾年齡: ${config.targetAge}
+              - 目標觀眾性別: ${config.targetGender}
               - 影片長度: ${config.videoLength}
               ${config.referenceImage ? "- 需參考附上的圖片風格與主題。" : ""}
 
@@ -340,11 +351,43 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
                           className="form-select w-full rounded-lg border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:ring-[var(--primary)] pl-4 py-3"
                           disabled={isGenerating}
                         >
-                            <option>Fantasy</option>
-                            <option>Sci-Fi</option>
-                            <option>Realism</option>
-                            <option>Cyberpunk</option>
-                            <option>Cute Style</option>
+                            {storyStyleOptions.map(style => (
+                                <option key={style} value={style}>
+                                    {t[`storyStyle_${style.replace(/[-\s]/g, '')}`]}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                     <div>
+                        <FormLabel htmlFor="target-age">{t.targetAudienceAge}</FormLabel>
+                        <select 
+                          id="target-age"
+                          value={config.targetAge}
+                          onChange={e => handleInputChange('targetAge', e.target.value)}
+                          className="form-select w-full rounded-lg border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:ring-[var(--primary)] pl-4 py-3"
+                          disabled={isGenerating}
+                        >
+                            {ageOptions.map(age => (
+                                <option key={age} value={age}>
+                                    {t[`age_${age.replace(/[-\s]/g, '')}`]}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <FormLabel htmlFor="target-gender">{t.targetAudienceGender}</FormLabel>
+                        <select 
+                          id="target-gender"
+                          value={config.targetGender}
+                          onChange={e => handleInputChange('targetGender', e.target.value)}
+                          className="form-select w-full rounded-lg border-[var(--border-color)] bg-[var(--input-bg)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:ring-[var(--primary)] pl-4 py-3"
+                          disabled={isGenerating}
+                        >
+                            {genderOptions.map(gender => (
+                                <option key={gender} value={gender}>
+                                    {t[`gender_${gender.replace(/\s/g, '')}`]}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <div>
@@ -357,7 +400,9 @@ export const StoryIdeaGenerator: React.FC<StoryIdeaGeneratorProps> = ({ config, 
                             disabled={isGenerating}
                         >
                             {imageStyleOptions.map(style => (
-                                <option key={style} value={style}>{style}</option>
+                                <option key={style} value={style}>
+                                    {t[`imageStyle_${style.replace(/[-\s]/g, '')}`]}
+                                </option>
                             ))}
                         </select>
                         <div className="mt-4">

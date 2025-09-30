@@ -13,6 +13,8 @@ const initialStoryConfig: StoryConfig = {
   idea: '',
   storyStyle: 'Fantasy',
   imageStyle: 'Default',
+  targetAge: 'All Ages',
+  targetGender: 'All Genders',
   videoType: 'loop',
   videoLength: '10s',
   hasReferenceImage: false,
